@@ -128,6 +128,6 @@ void loop() {
     
   }
 
-  delay(10000);
+  delay(50000);
 }
 
