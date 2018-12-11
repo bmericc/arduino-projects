@@ -8,12 +8,16 @@
 #include <Arduino.h>
 
 #include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
+//#include <ESP8266WiFiMulti.h>
 
 #include <ESP8266HTTPClient.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include "WiFiManager.h" //https://github.com/tzapu/WiFiManager
 
 #define USE_SERIAL Serial
 
@@ -28,7 +32,15 @@
 OneWire oneWire(ONEWIRE);
 DallasTemperature sensors(&oneWire);
 
-ESP8266WiFiMulti WiFiMulti;
+//ESP8266WiFiMulti WiFiMulti;
+WiFiManager wifiManager;
+
+void configModeCallback (WiFiManager *myWiFiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  //if you used auto generated SSID, print it
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+}
 
 void setup() {
 
@@ -47,8 +59,17 @@ void setup() {
 
   sensors.begin();
 
-  WiFi.mode(WIFI_STA);
-  WiFiMulti.addAP("SSID", "PASSWD");
+  wifiManager.setAPCallback(configModeCallback);
+
+  if(!wifiManager.autoConnect()) {
+      Serial.println("failed to connect and hit timeout");
+      //reset and try again, or maybe put it to deep sleep
+      ESP.reset();
+      delay(1000);
+  } 
+
+ // WiFi.mode(WIFI_STA);
+  //WiFiMulti.addAP("SSID", "PASSWD");
 
 }
 
@@ -79,7 +100,8 @@ void loop() {
 
   
   // wait for WiFi connection
-  if ((WiFiMulti.run() == WL_CONNECTED)) {
+  //if ((WiFiMulti.run() == WL_CONNECTED)) {
+  if(!wifiManager.autoConnect()) {
 
     HTTPClient http;
 
@@ -95,15 +117,13 @@ void loop() {
       String tempValueC = dtostrf(tempC, 1, 2, buffer);
       String tempValueF = dtostrf(tempF, 1, 2, buffer);
       String macString = WiFi.macAddress();
-      
-      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-      http.POST("tempD=*D"+tempValueC+"*&tempA=*A"+tempValueF+"*&macString="+macString+"&current="+tempValueC);
-      http.writeToStream(&Serial);
-      http.end();
 
       USE_SERIAL.print("[HTTP] GET...\n");
-      // start connection and send HTTP header
-      int httpCode = http.GET();
+      
+      http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+      int httpCode = http.POST("tempD=*D"+tempValueC+"*&tempA=*A"+tempValueF+"*&macString="+macString+"&current="+tempValueC);
+      http.writeToStream(&Serial);
+      http.end();     
   
       // httpCode will be negative on error
       if (httpCode > 0) {
@@ -128,6 +148,6 @@ void loop() {
     
   }
 
-  delay(50000);
+  delay(300000);
 }
 
