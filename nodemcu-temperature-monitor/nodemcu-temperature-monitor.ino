@@ -61,7 +61,7 @@ void setup() {
 
   wifiManager.setAPCallback(configModeCallback);
 
-  if(!wifiManager.autoConnect()) {
+  if(!wifiManager.autoConnect("AutoConnectAP")) {
       Serial.println("failed to connect and hit timeout");
       //reset and try again, or maybe put it to deep sleep
       ESP.reset();
@@ -100,8 +100,7 @@ void loop() {
 
   
   // wait for WiFi connection
-  //if ((WiFiMulti.run() == WL_CONNECTED)) {
-  if(!wifiManager.autoConnect()) {
+  if ((WiFi.status() == WL_CONNECTED)) {
 
     HTTPClient http;
 
@@ -118,7 +117,7 @@ void loop() {
       String tempValueF = dtostrf(tempF, 1, 2, buffer);
       String macString = WiFi.macAddress();
 
-      USE_SERIAL.print("[HTTP] GET...\n");
+      USE_SERIAL.print("[HTTP] POST...\n");
       
       http.addHeader("Content-Type", "application/x-www-form-urlencoded");
       int httpCode = http.POST("tempD=*D"+tempValueC+"*&tempA=*A"+tempValueF+"*&macString="+macString+"&current="+tempValueC);
@@ -128,7 +127,7 @@ void loop() {
       // httpCode will be negative on error
       if (httpCode > 0) {
         // HTTP header has been send and Server response header has been handled
-        USE_SERIAL.printf("[HTTP] GET... code: %d\n", httpCode);
+        USE_SERIAL.printf("[HTTP] POST... code: %d\n", httpCode);
   
         // file found at server
         if (httpCode == HTTP_CODE_OK) {
@@ -136,7 +135,7 @@ void loop() {
           USE_SERIAL.println(payload);
         }
       } else {
-        USE_SERIAL.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
+        USE_SERIAL.printf("[HTTP] POST... failed, error: %s\n", http.errorToString(httpCode).c_str());
       }
   
       http.end();
